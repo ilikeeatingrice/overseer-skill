@@ -1,6 +1,6 @@
 ---
 name: overseer
-description: Use when about to implement anything beyond a trivial single-file edit (≈≤10 lines, 1 file, no new tests), execute a written plan, run multi-step research/gathering/investigation, do a bulk refactor or data analysis, fan out on debugging — or make any Agent dispatch where model would otherwise be omitted. The session model (fable-5) is the tech lead — it plans, decomposes, authors dispatch prompts, and QAs evidence inline, but DISPATCHES the work. Default dispatch lane = gpt-5.6-sol at medium via codex, ALWAYS pinned explicitly (codex:codex-rescue for writes, codex exec read-only for investigation); sonnet/opus only for taste-critical user-facing surfaces.
+description: Use when about to implement anything beyond a trivial single-file edit (≈≤10 lines, 1 file, no new tests), execute a written plan, run multi-step research/gathering/investigation, do a bulk refactor or data analysis, fan out on debugging — or make any Agent dispatch where model would otherwise be omitted. The session model (fable-5) is the tech lead — it plans, decomposes, authors dispatch prompts, and QAs evidence inline, but DISPATCHES the work. Default dispatch lane = gpt-5.6-luna at max effort via codex, ALWAYS pinned explicitly (codex:codex-rescue for writes, codex exec read-only for investigation); sonnet/opus only for taste-critical user-facing surfaces.
 ---
 
 # Overseer mode — Fable 5 as tech lead
@@ -31,10 +31,14 @@ a judgment call — it's named so drift is visible. **When in doubt, dispatch.**
 
 ## 2. Routing table
 
-**gpt-5.6-sol (medium) via codex is the DEFAULT dispatch lane** (user directive
-2026-07-12, superseding the 2026-07-09 terra-medium default). Codex tokens are abundant (user: "be more aggressive on
-using gpt-5.5, I usually have a lot of token left") and it offloads Claude Max quota
-entirely. Route to Claude subagents only for taste ≥ 7 or tight in-session integration.
+**gpt-5.6-luna at max effort via codex is the DEFAULT dispatch lane** (user directive
+2026-08-17, superseding the 2026-07-12 sol-medium default). **The premise changed: codex
+weekly quota is now SCARCE**, not abundant — the user is routinely out of sol budget, so
+the default lane must be the cheap one. OpenAI cut luna 80% on 2026-07-30 ($1→$0.20/M in,
+$6→$1.20/M out); at max effort luna scores ~86% of sol's intelligence index at roughly a
+sixth of the cost (Artificial Analysis: luna 51/$174, terra 55/$1403, sol 59/$2824).
+**Codex credit rates are weighted by model but NOT in the same ratios as API list prices**
+— luna saves real quota, just don't budget as though it is 6x. Route to Claude subagents only for taste ≥ 7 or tight in-session integration.
 Scores are (cost/intelligence/taste) for this user — higher is better/cheaper.
 
 **PIN model+effort on EVERY codex dispatch.** The user's `~/.codex/config.toml` default is
@@ -45,17 +49,17 @@ shift the lane silently. Pin syntax is in §7.
 
 | Work | Model | Via |
 |---|---|---|
-| **DEFAULT — all implementation** (prose spec, multi-file integration, debugging, bulk/mechanical, transcription) **and all substantial gathering** (research, log/data crunching, wide grep-and-summarize, investigation) | gpt-5.6-sol (7/9/5 — top coding model, > Fable 5 on agentic-coding benchmarks at lower latency) | `codex:codex-rescue` Agent (write) or `codex exec -s read-only` via Bash (investigate); model+effort pinned per §7, effort per the §6 first-dispatch ladder — medium for nearly all dispatches; `--background` for long runs |
-| Hard digs and escalations on the codex lane | gpt-5.6-sol at **high** effort | same lanes, pinned `--effort high`; §6 ladder governs when |
-| User-facing surface (UI, copy, API design) — needs taste ≥ 7 | sonnet (5/5/7) or opus (4/7/8); **never the codex lane** | Agent `model:'sonnet'` / `'opus'` |
+| **DEFAULT — all implementation** (prose spec, multi-file integration, debugging, bulk/mechanical, transcription) **and all substantial gathering** (research, log/data crunching, wide grep-and-summarize, investigation) | gpt-5.6-luna at **max** effort (9/7/4 — strong on mechanical refactors, test writing, module analysis, documentation; **documented weak on frontend and visual work**) | `codex:codex-rescue` Agent (write) or `codex exec -s read-only` via Bash (investigate); model+effort pinned per §7, effort per the §6 first-dispatch ladder — max for nearly all dispatches; `--background` for long runs |
+| Hard digs and escalations on the codex lane | sonnet first (different quota pool), then gpt-5.6-sol at **medium**, then **high** | §6 ladder governs when; every sol dispatch spends the scarce pool, so justify it |
+| User-facing surface — **all frontend/visual/CSS/layout work**, UI, copy, API design — needs taste ≥ 7 | sonnet (5/5/7) or opus (4/7/8); **never the codex lane** (this is now a measured luna weakness, not only a taste preference) | Agent `model:'sonnet'` / `'opus'` |
 | Quick in-session repo searches feeding the overseer's own planning; Workflow structured-output/schema steps; thin codex-wrapper Workflow steps | sonnet (or Explore agent) | Agent / Workflow `model:'sonnet'` |
 | OPTIONAL second-opinion on substantive diffs (large/risky branches) — an *instrument* feeding the overseer's own review, never the reviewer of record | gpt-5.6-sol; opus when a Claude-side perspective is wanted | codex (read-only) / Agent |
 | Architecture, decomposition, plans, dispatch authoring, ALL validation/adjudication, **the final whole-branch review** | fable-5 (2/9/9) — the overseer | inline, never dispatched |
 
-(haiku, gpt-5.6-luna, and gpt-5.6-terra: intentionally absent from the table — sol medium
-is the chosen default lane (user directive 2026-07-12); terra (9/8/5) stays available as a
-cheaper fallback if quota pressure appears, and gpt-5.5 remains the known-good fallback for
-5.6 rollout issues.)
+(haiku and gpt-5.6-pro: intentionally absent. terra (max effort) is the published escalation
+for context-heavy builds luna cannot hold, but it only got a 20% cut — prefer sonnet first.
+sol is now the RESERVE tier, not the default. **This lane is an experiment as of 2026-08-17**:
+if luna-max output misses the bar repeatedly, fall back per §6 and tell the user.)
 
 **Standing rules:**
 - Defaults, not limits: escalate when output misses the bar — **judge output, not price**.
@@ -67,7 +71,8 @@ cheaper fallback if quota pressure appears, and gpt-5.5 remains the known-good f
 
 **(a) Written plan** → defer to `superpowers:subagent-driven-development` for task briefs,
 progress ledger, file handoffs, and status handling — with two overrides:
-- Instantiate its abstract model tiers from the routing table above (gpt-5.6-sol default lane).
+- Instantiate its abstract model tiers from the routing table above (gpt-5.6-luna at max
+  effort is the default lane; frontend/visual tasks route to sonnet instead).
 - **Replace its task-reviewer-subagent step with the overseer's personal validation (§5)**
   — per the user's recorded correction: no reviewer subagents; validation is mine.
 
@@ -87,7 +92,8 @@ review) may be transcribed inline — fidelity beats dispatch there.
 fresh implementing session keeps only CLAUDE.md + the plan text — so the plan itself must
 carry the directive. When AUTHORING any implementation plan, end it with an **Execution
 footer**: "Execute under the `overseer` skill — SDD mechanics, models from the overseer
-routing table (gpt-5.6-sol medium via codex default, always pinned), evidence contract on every
+routing table (gpt-5.6-luna at max effort via codex default, always pinned; frontend/visual
+work to sonnet, never the codex lane), evidence contract on every
 dispatch, overseer
 validates personally and performs the final whole-branch review itself (no reviewer
 subagents)." When RECEIVING a plan to implement, invoke
@@ -157,9 +163,10 @@ spot-checks with risk-scaling don't.
 
 ## 6. Escalation ladders
 
-- **Intelligence-bound work:** gpt-5.6-sol medium → **sol high** → fable-inline. The
-  rungs are effort jumps within the top codex coder (sol xhigh remains a niche when a
-  latency-tolerant deep grind is wanted, not a standard rung).
+- **Intelligence-bound work:** gpt-5.6-luna max → **sonnet** → gpt-5.6-sol medium →
+  **sol high** → fable-inline. Rung 2 is a deliberate POOL SWITCH: sonnet spends Claude
+  Max quota, not the scarce codex weekly quota, so it buys quality and budget at once.
+  Reach past it to sol only when sonnet also misses the bar.
   One rung at a time; escalate on THIS dispatch's own returned output (failed QA, missed
   the bar) — never on stakes, anxiety, or token abundance. Another agent's failure on a
   different task is anxiety, not evidence. Abundant tokens make dispatching cheap, not
@@ -167,33 +174,42 @@ spot-checks with risk-scaling don't.
 - **Taste-bound work:** sonnet → opus → fable-inline.
 - **Triggers:** BLOCKED; evidence fails QA twice; output misses the bar.
 - Never re-dispatch the same model+effort with unchanged input.
-- Never "escalate" the codex lane → sonnet/opus for *difficulty* — that's an intelligence
-  **downgrade** (sol int 9 vs sonnet 5 / opus 7). Switch lanes only for
-  taste/integration; escalate **model/effort** for difficulty.
+- Escalating the codex lane → sonnet **is now correct for difficulty** (superseded
+  2026-08-17). That rule was written when sol was the default lane, where sonnet was a
+  genuine downgrade; luna is the small model, so sonnet is a step up AND a cheaper pool.
+  The old rule still holds for sol: never "escalate" sol → sonnet/opus for difficulty.
 
 **First-dispatch tier (codex lane)** — assigned by the overseer per dispatch, as part
 of authoring the dispatch prompt (never a blanket setting; user's 2026-07-04 direction:
 top tiers are not a default). Always pinned explicitly (§7) — there is no safe "no flag"
-default anymore (the user's config default is sol+high, and the pinned default here is
-sol+medium — the effort differs):
-- **sol medium** — the working default: implementation from a written spec,
-  mechanical/bulk work, standard debugging, routine gathering. Stakes don't raise the
-  tier: a fully-specced task dispatches at sol medium whether it's a README tweak or a
-  payment path — risk is handled by the overseer's personal validation (§5), not by
-  more effort.
-- **sol high** — when the task itself is a hard dig (cross-module root-cause hunts,
-  subtle concurrency/state bugs, investigation in unfamiliar territory), or as the
-  escalation rung after sol medium missed the bar. A genuinely high-shaped FIRST
-  dispatch (a known-brutal dig) is allowed but must be justified in the dispatch prompt.
+default anymore (the user's config default is sol+medium, and the pinned default here is
+luna+max — both the model AND the effort differ, so an unpinned dispatch silently spends
+the scarce sol pool):
+- **luna max** — the working default: implementation from a written spec,
+  mechanical/bulk work, test writing, module analysis, documentation, standard debugging,
+  routine gathering. Stakes don't raise the tier: a fully-specced task dispatches at luna
+  max whether it's a README tweak or a payment path — risk is handled by the overseer's
+  personal validation (§5), not by a bigger model. **Do not send frontend/visual/layout
+  work here** — that routes to sonnet per the §2 table.
+- **sonnet / sol medium** — when the task itself is a hard dig (cross-module root-cause
+  hunts, subtle concurrency/state bugs, long-context recall, investigation in unfamiliar
+  territory — luna is documented weak on long-context recall and the hardest reasoning),
+  or as the escalation rung after luna max missed the bar. Try sonnet first (free of the
+  codex pool). A genuinely hard-shaped FIRST dispatch is allowed but must be justified in
+  the dispatch prompt, and skipping straight to sol must name why sonnet won't do.
 
 ## 7. gpt-5.6 / Codex mechanics
 
 **Pinning (mandatory on every dispatch)** — the user's config.toml default is
-`gpt-5.6-sol`+`high` and is never edited; unpinned = silent `high`-effort burn on
-routine work:
-- Lane A (rescue/companion): state `--model gpt-5.6-sol --effort medium` in the request
-  (the companion accepts `--model <model>` and `--effort <none|minimal|low|medium|high|xhigh>`).
-- Lane B (exec): `codex exec -m gpt-5.6-sol -c model_reasoning_effort="medium" …`.
+`gpt-5.6-sol` + `medium` (verified 2026-08-17; this file previously claimed `high`, which
+was stale — the drift is exactly why pinning is mandatory) and is never edited. Unpinned =
+silent sol burn on the scarce pool:
+- Lane A (rescue/companion): state `--model gpt-5.6-luna --effort max` in the request.
+  Effort enum, verified against the codex 0.147.0 binary:
+  `concise|minimal|low|medium|high|xhigh|max|ultra` (`max` and `ultra` were missing from
+  the older list in this file).
+- Lane B (exec): `codex exec -m gpt-5.6-luna -c model_reasoning_effort="max" …`.
+- Model catalog: `gpt-5.6-luna`, `gpt-5.6-terra`, `gpt-5.6-sol`, `gpt-5.6-pro`.
 
 - **Pre-flight (mandatory, 30s, user directive 2026-08-08 "stop hurting agility"):** before
   ANY codex dispatch, check the landmine list in the `codex-dispatch-reliability` memory:
@@ -250,3 +266,11 @@ Refer to skills/agents **by name only** — `superpowers:subagent-driven-develop
 `superpowers:dispatching-parallel-agents`, `superpowers:using-git-worktrees`,
 `codex:codex-rescue`, `codex:gpt-5-4-prompting` — never versioned plugin-cache paths; they
 rot on update.
+
+**The `superpowers:` prefix is an install detail, not part of the name.** It is correct when
+those skills come from the superpowers plugin. If they are instead vendored into a repo's
+`.claude/skills/` or `.codex/skills/`, they resolve by bare directory name and the prefix
+must be dropped — a prefixed reference to a vendored skill resolves to nothing. Match the
+prefix to how the skills are actually installed in the target repo; this file ships in the
+plugin form. The same applies to `codex:` — those two names require the codex plugin, and
+without it only Lane B (`codex exec` via Bash, §7) is available.
