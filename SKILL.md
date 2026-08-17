@@ -1,6 +1,6 @@
 ---
 name: overseer
-description: Use when about to implement anything beyond a trivial single-file edit (≈≤10 lines, 1 file, no new tests), execute a written plan, run multi-step research/gathering/investigation, do a bulk refactor or data analysis, fan out on debugging — or make any Agent dispatch where model would otherwise be omitted. The session model (fable-5) is the tech lead — it plans, decomposes, authors dispatch prompts, and QAs evidence inline, but DISPATCHES the work. Default dispatch lane = gpt-5.6-luna at max effort via codex, ALWAYS pinned explicitly (codex:codex-rescue for writes, codex exec read-only for investigation); sonnet/opus only for taste-critical user-facing surfaces.
+description: Use when about to implement anything beyond a trivial single-file edit, execute a written plan, run multi-step research or investigation, do a bulk refactor, or dispatch an Agent for non-trivial work.
 ---
 
 # Overseer mode — Fable 5 as tech lead
